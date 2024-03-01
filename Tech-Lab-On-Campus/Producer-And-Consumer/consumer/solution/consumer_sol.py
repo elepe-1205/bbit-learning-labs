@@ -1,22 +1,25 @@
 import pika
 import os
 import sys
-from solution import mqConsumerInterface
-Class mqConsumer(mqConsumerInterface):
+from consumer_interface import mqConsumerInterface
+
+class mqConsumer(mqConsumerInterface):
   def __init__(self, binding_key: str, exchange_name: str, queue_name: str):
     self.binding_key = binding_key
     self.exchange_name = exchange_name
     self.queue_name = queue_name
+    self.channel = None
+    self.connection = None
     self.setupRMQConnection()
   
   def setupRMQConnection(self):
     con_params = pika.URLParameters(os.environ["AMQP_URL"])
     self.connection = pika.BlockingConnection(parameters=con_params)
-    self.channel = connection.channel()
+    self.channel = self.connection.channel()
     self.channel.queue_declare(queue= self.queue_name)
-    exchange = channel.exchange_declare(exchange= self.exchange_name)
+    exchange = self.channel.exchange_declare(exchange= self.exchange_name)
     self.channel.queue_bind(queue= self.queue_name, routing_key= self.binding_key, exchange= self.exchange_name,)
-    self.channel.basic_consume(self.queue_name, on_message_callback, auto_ack=False)
+    self.channel.basic_consume(self.queue_name, self.on_message_callback, auto_ack=False)
 
   def on_message_callback(self, channel, method_frame, header_frame, body):
     self.channel = channel
@@ -31,7 +34,7 @@ Class mqConsumer(mqConsumerInterface):
     print("[*] Waiting for messages. To exit press CTRL+C")
     self.channel.start_consuming()
 
-  def __del__(self) ->:
+  def __del__(self):
     # Print "Closing RMQ connection on destruction"
     print("Closing RMQ connection on destruction")
     # Close Channel
